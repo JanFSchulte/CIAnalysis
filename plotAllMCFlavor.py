@@ -13,7 +13,7 @@ import os
 from copy import copy
 import numpy as np
 import root_numpy
-
+from copy import deepcopy
 # Muon sys uncertainty (%) 
 # as a function of mass
 def znorm(hist):
@@ -23,7 +23,14 @@ def znorm(hist):
 	for i in range(lowLimit+1,upLimit+1):
 		znorm+=hist.GetBinContent(i)
 	return znorm
-	
+
+def scale(hist1,hist2):
+	lowLimit=hist1.FindBin(200)
+	upLimit=hist1.FindBin(400)
+	sFac1=hist1.Integral(lowLimit,upLimit)
+	sFac2=hist2.Integral(lowLimit,upLimit)
+	print(sFac2)
+	return sFac1/sFac2
 def getMuErr(mass, chann, norm=False):
 	lumi = 0.0
 	znorm = 0.0
@@ -98,9 +105,34 @@ def getErrors(default, others, keys):
 	return errs                           
 
 # multiply hist by 1/(Acceptance x Efficiency)
+def Rebin(hist):
+	bng=[50, 120,150,200,300,400,500,690,900,1250,1610, 3490, 6070]
+	#bng=([j for j in range(50, 120, 5)] +
+        #                        [j for j in range(120, 150, 5)] +
+        #                        [j for j in range(150, 200, 10)] +
+        #                        [j for j in range(200, 600, 20)]+
+        #                        [j for j in range(600, 900, 30) ]+
+        #                        [j for j in range(900, 1250, 50)] +
+        #                        [j for j in range(1250, 1610, 60) ] +
+        #                        [j for j in range(1610, 1890, 70) ] +
+        #                        [j for j in range(1890, 3970, 80) ] +
+        #                        [j for j in range(3970, 6070, 100) ] +
+        #                        [6070])
+	#bng=[50,200,1500,6070]
+	hist.Sumw2()
+	for i in range(0,hist.GetNbinsX()):
+		hist.SetBinContent(i,hist.GetBinContent(i)*hist.GetBinWidth(i))
+		hist.SetBinError(i,hist.GetBinError(i)*hist.GetBinWidth(i))
+	hist=hist.Rebin(len(bng) - 1, 'hist_' + uuid.uuid4().hex, array('d', bng))
+	for i in range(0,hist.GetNbinsX()):
+		hist.SetBinContent(i,hist.GetBinContent(i)/hist.GetBinWidth(i))
+		hist.SetBinError(i,hist.GetBinError(i)/hist.GetBinWidth(i))
+	return deepcopy(hist)
+
 def inverseAE(hist, plotObj, year):
 		# muon and electron
 		# BB and BE
+	
 	if year == 2016:
 		if plotObj.muon:
 			if "BB" in plotObj.fileName:
@@ -113,6 +145,9 @@ def inverseAE(hist, plotObj, year):
 					#print mass, ae
 					if mass < 120: ae = float("inf")
 					hist.SetBinContent(i, hist.GetBinContent(i)*1.0/ae)
+					hist.SetBinError(i, hist.GetBinError(i)*1.0/ae)
+					#print(mass)
+					#print("2016 BB mu ae = %f" %(ae))
 			elif "BE" in plotObj.fileName:
 				for i in range(1, hist.GetSize()-1):
 					mass = hist.GetBinCenter(i)
@@ -123,6 +158,9 @@ def inverseAE(hist, plotObj, year):
 					#print mass, ae
 					if mass < 120: ae = float("inf")
 					hist.SetBinContent(i, hist.GetBinContent(i)*1.0/ae)
+					hist.SetBinError(i, hist.GetBinError(i)*1.0/ae)
+					#print(mass)
+					#print("2016 BE mu ae = %f" %(ae))
 		else: # is electron
 			if "BB" in plotObj.fileName:
 				for i in range(1, hist.GetSize()-1):
@@ -130,12 +168,19 @@ def inverseAE(hist, plotObj, year):
 					ae = 0.6386-497.7/(mass+348.7) + 69570.0/(mass**2+115400.0)
 					#print mass, ae
 					hist.SetBinContent(i, hist.GetBinContent(i)*1.0/ae)
+					hist.SetBinError(i, hist.GetBinError(i)*1.0/ae)
+					#print(mass)
+					#print("2016 BB e ae = %f" %(ae))
+					
 			elif "BE" in plotObj.fileName:
 				for i in range(1, hist.GetSize()-1):
 					mass = hist.GetBinCenter(i)
 					ae = -0.03377+735.1/(mass+1318)-88890.0/(mass**2+75720)+14240000.0/(mass**3+23420000)
 					#print mass, ae
 					hist.SetBinContent(i, hist.GetBinContent(i)*1.0/ae)
+					hist.SetBinError(i, hist.GetBinError(i)*1.0/ae)
+					#print(mass)
+					#print("2016 BE e ae = %f" %(ae))
 
 	elif year == 2017:
 		if plotObj.muon:
@@ -149,6 +194,9 @@ def inverseAE(hist, plotObj, year):
 					#print mass, ae
 					if mass < 120: ae = float("inf")
 					hist.SetBinContent(i, hist.GetBinContent(i)*1.0/ae)
+					hist.SetBinError(i, hist.GetBinError(i)*1.0/ae)
+					#print(mass)
+					#print("2017 BB mu ae = %f" %(ae))
 			elif "BE" in plotObj.fileName:
 					for i in range(1, hist.GetSize()-1):
 						mass = hist.GetBinCenter(i)
@@ -159,6 +207,9 @@ def inverseAE(hist, plotObj, year):
 						#print mass, ae
 						if mass < 120: ae = float("inf")
 						hist.SetBinContent(i, hist.GetBinContent(i)*1.0/ae)
+						hist.SetBinError(i, hist.GetBinError(i)*1.0/ae)
+						#print(mass)
+						#print("2017 BE mu ae = %f" %(ae))
 		else: # is electron
 				if "BB" in plotObj.fileName:
 						for i in range(1, hist.GetSize()-1):
@@ -166,12 +217,18 @@ def inverseAE(hist, plotObj, year):
 								ae = 0.585-404.6/(mass+279.5) + 56180.0/(mass**2+91430.0)
 								#print mass, ae
 								hist.SetBinContent(i, hist.GetBinContent(i)*1.0/ae)
+								hist.SetBinError(i, hist.GetBinError(i)*1.0/ae)
+								#print(mass)
+								#print("2017 BB e ae = %f" %(ae))
 				elif "BE" in plotObj.fileName:
 						for i in range(1, hist.GetSize()-1):
 								mass = hist.GetBinCenter(i)
 								ae = 0.02066+429.7/(mass+729)-90960.0/(mass**2+71900)+13780000.0/(mass**3+22050000)
 								#print mass, ae
 								hist.SetBinContent(i, hist.GetBinContent(i)*1.0/ae)
+								hist.SetBinError(i, hist.GetBinError(i)*1.0/ae)
+								#print(mass)
+								#print("2017 BE e ae = %f" %(ae))
 	elif year == 2018:
 			if plotObj.muon:
 					if "BB" in plotObj.fileName:
@@ -184,6 +241,9 @@ def inverseAE(hist, plotObj, year):
 									#print mass, ae
 									if mass < 120: ae = float("inf")
 									hist.SetBinContent(i, hist.GetBinContent(i)*1.0/ae)
+									hist.SetBinError(i, hist.GetBinError(i)*1.0/ae)
+									#print(mass)
+									#print("2018 BB mu ae = %f" %(ae))
 					elif "BE" in plotObj.fileName:
 							for i in range(1, hist.GetSize()-1):
 									mass = hist.GetBinCenter(i)
@@ -194,6 +254,9 @@ def inverseAE(hist, plotObj, year):
 									#print mass, ae
 									if mass < 120: ae = float("inf")
 									hist.SetBinContent(i, hist.GetBinContent(i)*1.0/ae)
+									hist.SetBinError(i, hist.GetBinError(i)*1.0/ae)
+									#print(mass)
+									#print("2018 BE mu ae = %f" %(ae))
 			else: # is electron
 					if "BB" in plotObj.fileName:
 							for i in range(1, hist.GetSize()-1):
@@ -201,13 +264,18 @@ def inverseAE(hist, plotObj, year):
 									ae = 0.576-417.7/(mass+381.8) + 46070.0/(mass**2+107200)
 									#print mass, ae
 									hist.SetBinContent(i, hist.GetBinContent(i)*1.0/ae)
+									hist.SetBinError(i, hist.GetBinError(i)*1.0/ae)
+									#print(mass)
+									#print("2018 BB e ae = %f" %(ae))
 					elif "BE" in plotObj.fileName:
 							for i in range(1, hist.GetSize()-1):
 									mass = hist.GetBinCenter(i)
 									ae = 0.01443+475.7/(mass+639.1)-105600.0/(mass**2+82810)+12890000.0/(mass**3+23170000)
 									#print mass, ae
 									hist.SetBinContent(i, hist.GetBinContent(i)*1.0/ae)
-																				
+									hist.SetBinError(i, hist.GetBinError(i)*1.0/ae)
+									#print(mass)
+									#print("2018 BE e ae = %f" %(ae))																			
 def Stacks(processes,lumi,plot,zScale):
 	stacks=[]
 	for i in range(3):
@@ -267,7 +335,7 @@ def plotDataMC(args,plot_mu,plot_el, category):
 	if plot_mu["default"].useJets:
 		if "Wjets" in backgrounds:
 			backgrounds.remove("Wjets")
-		backgrounds.insert(0,"Jets")
+			backgrounds.insert(0,"Jets")
 	processes_mu = []
 	processes_el = []
 	processes_mu2016=[]
@@ -281,6 +349,9 @@ def plotDataMC(args,plot_mu,plot_el, category):
 			if background == "Jets":
 				processes_mu.append(Process(getattr(Backgrounds2016,background),eventCounts_mu,negWeights_mu,normalized=True))
 				processes_el.append(Process(getattr(Backgrounds2016,background),eventCounts_el,negWeights_el,normalized=True))
+			elif background == "Other":
+				processes_el.append(Process(getattr(Backgrounds2016,"OtherEle"),eventCounts_el,negWeights_el))
+				processes_mu.append(Process(getattr(Backgrounds2016,background),eventCounts_mu,negWeights_mu))
 			else:	
 				processes_mu.append(Process(getattr(Backgrounds2016,background),eventCounts_mu,negWeights_mu))
 				processes_el.append(Process(getattr(Backgrounds2016,background),eventCounts_el,negWeights_el))
@@ -301,6 +372,16 @@ def plotDataMC(args,plot_mu,plot_el, category):
 						processes_el2018.append(Process(getattr(Backgrounds2018,background),eventCounts_el,negWeights_el,normalized=True))
 						processes_mu=[processes_mu2016,processes_mu2017,processes_mu2018]
 						processes_el=[processes_mu2016,processes_mu2017,processes_mu2018]
+				elif background == "Other":
+						processes_el2016.append(Process(getattr(Backgrounds2016,"OtherEle"),eventCounts_el,negWeights_el))
+                                		processes_mu2016.append(Process(getattr(Backgrounds2016,background),eventCounts_mu,negWeights_mu))
+						processes_mu2017.append(Process(getattr(Backgrounds,background),eventCounts_mu,negWeights_mu))
+                                        	processes_el2017.append(Process(getattr(Backgrounds,background),eventCounts_el,negWeights_el))
+                                        	processes_mu2018.append(Process(getattr(Backgrounds2018,background),eventCounts_mu,negWeights_mu))
+                                        	processes_el2018.append(Process(getattr(Backgrounds2018,background),eventCounts_el,negWeights_el))
+                                        	processes_mu=[processes_mu2016,processes_mu2017,processes_mu2018]
+                                        	processes_el=[processes_el2016,processes_el2017,processes_el2018]
+
 				else:
 						processes_mu2016.append(Process(getattr(Backgrounds2016,background),eventCounts_mu,negWeights_mu))
 						processes_el2016.append(Process(getattr(Backgrounds2016,background),eventCounts_el,negWeights_el))
@@ -309,7 +390,7 @@ def plotDataMC(args,plot_mu,plot_el, category):
 						processes_mu2018.append(Process(getattr(Backgrounds2018,background),eventCounts_mu,negWeights_mu))
 						processes_el2018.append(Process(getattr(Backgrounds2018,background),eventCounts_el,negWeights_el))
 						processes_mu=[processes_mu2016,processes_mu2017,processes_mu2018]
-						processes_el=[processes_mu2016,processes_mu2017,processes_mu2018]
+						processes_el=[processes_el2016,processes_el2017,processes_el2018]
 		else:             
 				if background == "Jets":
 						processes_mu.append(Process(getattr(Backgrounds,background),eventCounts_mu,negWeights_mu,normalized=True))
@@ -324,7 +405,7 @@ def plotDataMC(args,plot_mu,plot_el, category):
 	legend.SetBorderSize(0)
 	legend.SetTextFont(42)
 	
-
+	
 	latex = ROOT.TLatex()
 	latex.SetTextFont(42)
 	latex.SetTextAlign(31)
@@ -437,6 +518,7 @@ def plotDataMC(args,plot_mu,plot_el, category):
 	else:
 		lumi_el = 41.529*1000
 		lumi_mu = 42.135*1000
+
 	if args.use2016:		
 		zScaleFac_mu = zScale2016["muons"]
 		if "BE" in plot_el["default"].fileName:
@@ -513,96 +595,250 @@ def plotDataMC(args,plot_mu,plot_el, category):
 		el_PUup=TheStack(processes_el,lumi_el,plot_el["PU_up"],zScaleFac_el)
 		el_PUdown=TheStack(processes_el,lumi_el,plot_el["PU_down"],zScaleFac_el)
 	
-	if args.ae:
+	if args.alter:
+		if args.useall:
+			for i in range(3):
+				sFac=scale(datael[i],datamu[i])	
+				datamu[i].Scale(sFac)
+				sFac=scale(stackel[i].theHistogram,stackmu[i].theHistogram)
+				stackmu[i].theHistogram.Scale(sFac)
+				mu_scaleup[i].theHistogram.Scale(sFac)
+				mu_scaledown[i].theHistogram.Scale(sFac)
+				mu_ID[i].theHistogram.Scale(sFac)
+				mu_reso[i].theHistogram.Scale(sFac)
+			func=ROOT.TF1("func","[0]+[1]*log(x)+[2]*x^2",200,3500)
+			
+			i=0
+                	Errs_mu_fit=[]
+                	Errs_el_fit=[]
+                	for year in range(2016,2019):
+                        	lis_mu_fit=[[mu_scaleup[i].theHistogram,mu_scaledown[i].theHistogram],mu_ID[i].theHistogram,mu_reso[i].theHistogram]
+                        	key_mu_fit=["massScale","ID","resolution"]
+                        	lis_el_fit=[[el_scaleup[i].theHistogram,el_scaledown[i].theHistogram],[el_PUup[i].theHistogram,el_PUdown[i].theHistogram]]
+                        	key_el_fit=["massScale","pileUp"]
+                        	Errs_mu_fit.append(getErrors(stackmu[i].theHistogram,lis_mu_fit,key_mu_fit))
+                        	Errs_el_fit.append(getErrors(stackel[i].theHistogram,lis_el_fit,key_el_fit))
+                        	i+=1
+                	if category=="bb":
+                        	errmu_fit=Errs_mu_fit[0]["massScale"]**2+(Errs_mu_fit[1]["massScale"]+Errs_mu_fit[2]["massScale"])**2+Errs_mu_fit[0]["resolution"]**2+Errs_mu_fit[1]["resolution"]**2+Errs_mu_fit[2]["resolution"]**2+Errs_mu_fit[0]["ID"]**2+(Errs_mu_fit[1]["ID"]+Errs_mu_fit[2]["ID"])**2
+                	else:
+                        	errmu_fit=Errs_mu_fit[0]["massScale"]**2+(Errs_mu_fit[1]["massScale"]+Errs_mu_fit[2]["massScale"])**2+Errs_mu_fit[0]["resolution"]**2+Errs_mu_fit[1]["resolution"]**2+Errs_mu_fit[2]["resolution"]**2+Errs_mu_fit[0]["ID"]**2+Errs_mu_fit[1]["ID"]**2+Errs_mu_fit[2]["ID"]**2
+                	errel_fit=Errs_el_fit[0]["massScale"]**2+Errs_el_fit[0]["pileUp"]**2+Errs_el_fit[1]["massScale"]**2+Errs_el_fit[1]["pileUp"]**2+Errs_el_fit[2]["massScale"]**2+Errs_el_fit[2]["pileUp"]**2
+                	scale_el_fit=Errs_el_fit[0]["massScale"]**2+Errs_el_fit[1]["massScale"]**2+Errs_el_fit[2]["massScale"]**2
+                	scale_mu_fit=Errs_mu_fit[0]["massScale"]**2+(Errs_mu_fit[1]["massScale"]+Errs_mu_fit[2]["massScale"])**2
+                	stackmu_fit=Addstack(stackmu)
+                	stackel_fit=Addstack(stackel)
+                	mu_scaleup_fit=Addstack(mu_scaleup)
+                	mu_scaledown_fit=Addstack(mu_scaledown)
+                	mu_ID_fit=Addstack(mu_ID)
+                	mu_reso_fit=Addstack(mu_reso)
+                	el_scaleup_fit=Addstack(el_scaleup)
+                	el_scaledown_fit=Addstack(el_scaledown)
+                	el_PUup_fit=Addstack(el_PUup)
+                	el_PUdown_fit=Addstack(el_PUdown)
+                	datamu_fit=Addhist(datamu)
+                	datael_fit=Addhist(datael)
+       			if args.ratio:
+				hhmu_fit = stackmu_fit.theHistogram
+                		hhel_fit = stackel_fit.theHistogram
+                		h_mu_scaleup_fit=mu_scaleup_fit.theHistogram
+                		h_mu_scaledown_fit=mu_scaledown_fit.theHistogram
+                		h_mu_ID_fit=mu_ID_fit.theHistogram
+                		h_mu_reso_fit=mu_reso_fit.theHistogram
+                		h_el_scaleup_fit=el_scaleup_fit.theHistogram
+                		h_el_scaledown_fit=el_scaledown_fit.theHistogram
+                		h_el_PUup_fit=el_PUup_fit.theHistogram
+                		h_el_PUdown_fit=el_PUdown_fit.theHistogram
+                		ratioGraphs_fit = ROOT.TGraphAsymmErrors(hhmu_fit.GetSize()-2)
+                		for i in range(1, hhmu_fit.GetSize()-1):
+                        		xval_fit = hhmu_fit.GetBinCenter(i)
+                        		xerr_fit = hhmu_fit.GetBinWidth(i)/2
+                        		if hhel_fit.GetBinContent(i) == 0: continue
+                        		if hhmu_fit.GetBinContent(i) == 0: continue
+                        #print(hhmu.GetBinContent(i))
+                        #print(hhel.GetBinContent(i))
+                        		yval_fit = hhmu_fit.GetBinContent(i)*1.0/hhel_fit.GetBinContent(i)
+                        		hhmu_fit.SetBinError(i,math.sqrt(errmu_fit[i-1]+hhmu_fit.GetBinError(i)**2))
+                        		hhel_fit.SetBinError(i,math.sqrt(errel_fit[i-1]+hhel_fit.GetBinError(i)**2))
+                        		yerr_fit = yval_fit*math.sqrt((hhmu_fit.GetBinError(i)/hhmu_fit.GetBinContent(i))**2+(hhel_fit.GetBinError(i)/hhel_fit.GetBinContent(i))**2)
+                        		ratioGraphs_fit.SetPoint(i, xval_fit, yval_fit)
+                        		ratioGraphs_fit.SetPointError(i, xerr_fit, xerr_fit, yerr_fit, yerr_fit)
+				#func.SetParLimits(2,0.8,1.2)
+				#func.SetParLimits(1,1.5e-1,1.9e-1)
+                        	ratioGraphs_fit.Fit(func,"","",200,3500)
+				
+				#ratioGraphs_fit.Fit(func,"","",200,3500)
+				#ratioGraphs_fit.Fit(func,"","",200,3500)
+				#ratioGraphs_fit.Fit(func,"","",200,3500)
+				#ratioGraphs_fit.Fit(func,"","",200,3500)
+				print(func.GetNDF())
+				print(func.GetChisquare())
+				print(func.GetChisquare()/func.GetNDF())	
+				
+	if args.ae: 
+				
 		if args.useall:
 			i=0
 			for year in range(2016,2019):
-				for h in stackmu[i].theStack.GetHists(): inverseAE(h, plot_mu["default"], year)
-				for h in stackel[i].theStack.GetHists(): inverseAE(h, plot_el["default"], year)
+				print(year)
+				for h in stackmu[i].theStack.GetHists(): 
+					inverseAE(h, plot_mu["default"], year)
+					h=Rebin(h)
+				for h in stackel[i].theStack.GetHists(): 
+					inverseAE(h, plot_el["default"], year)
+					h=Rebin(h)
 				inverseAE(stackmu[i].theHistogram, plot_mu["default"], year)
+				stackmu[i].theHistogram=Rebin(stackmu[i].theHistogram)
 				inverseAE(stackel[i].theHistogram, plot_el["default"], year)
+				stackel[i].theHistogram=Rebin(stackel[i].theHistogram)
 				inverseAE(mu_scaleup[i].theHistogram, plot_mu["scale_up"], year)
+				mu_scaleup[i].theHistogram=Rebin(mu_scaleup[i].theHistogram)
 				inverseAE(mu_scaledown[i].theHistogram, plot_mu["scale_down"], year)
+				mu_scaledown[i].theHistogram=Rebin(mu_scaledown[i].theHistogram)
 				inverseAE(mu_ID[i].theHistogram, plot_mu["ID"], year)
+				mu_ID[i].theHistogram=Rebin(mu_ID[i].theHistogram)
 				inverseAE(mu_reso[i].theHistogram, plot_mu["reso"], year)
+				mu_reso[i].theHistogram=Rebin(mu_reso[i].theHistogram)
 				inverseAE(el_scaleup[i].theHistogram, plot_el["scale_up"], year)
+				el_scaleup[i].theHistogram=Rebin(el_scaleup[i].theHistogram)
 				inverseAE(el_scaledown[i].theHistogram, plot_el["scale_down"], year)
+				el_scaledown[i].theHistogram=Rebin(el_scaledown[i].theHistogram)
 				inverseAE(el_PUup[i].theHistogram, plot_el["PU_up"], year)
+				el_PUup[i].theHistogram=Rebin(el_PUup[i].theHistogram)
 				inverseAE(el_PUdown[i].theHistogram, plot_el["PU_down"], year)
+				el_PUdown[i].theHistogram=Rebin(el_PUdown[i].theHistogram)
 				inverseAE(datamu[i], plot_mu["default"], year)
+				datamu[i]=Rebin(datamu[i])
 				inverseAE(datael[i], plot_el["default"], year)
+				datael[i]=Rebin(datael[i])
 				i+=1             
 		else:
 			if args.use2016: year = 2016
 			elif args.use2018: year = 2018
 			else: year =2017
-			for h in stackmu.theStack.GetHists(): inverseAE(h, plot_mu["default"], year)
-			for h in stackel.theStack.GetHists(): inverseAE(h, plot_el["default"], year)
+			for h in stackmu.theStack.GetHists():
+				inverseAE(h, plot_mu["default"], year)
+				h=Rebin(h)
+			for h in stackel.theStack.GetHists(): 
+				inverseAE(h, plot_el["default"], year)
+				h=Rebin(h)
 			inverseAE(stackmu.theHistogram, plot_mu["default"], year)
+			stackmu.theHistogram=Rebin(stackmu.theHistogram)
 			inverseAE(stackel.theHistogram, plot_el["default"], year)
+			stackel.theHistogram=Rebin(stackel.theHistogram)
 			inverseAE(mu_scaleup.theHistogram, plot_mu["scale_up"], year)
+			mu_scaleup.theHistogram=Rebin(mu_scaleup.theHistogram)
 			inverseAE(mu_scaledown.theHistogram, plot_mu["scale_down"], year)
+			mu_scaledown.theHistogram=Rebin(mu_scaledown.theHistogram)
 			inverseAE(mu_ID.theHistogram, plot_mu["ID"], year)
+			mu_ID.theHistogram=Rebin(mu_ID.theHistogram)
 			inverseAE(mu_reso.theHistogram, plot_mu["reso"], year)
+			mu_reso.theHistogram=Rebin(mu_reso.theHistogram)
 			inverseAE(el_scaleup.theHistogram, plot_el["scale_up"], year)
+			el_scaleup.theHistogram=Rebin(el_scaleup.theHistogram)
 			inverseAE(el_scaledown.theHistogram, plot_el["scale_down"], year)
+			el_scaledown.theHistogram=Rebin(el_scaledown.theHistogram)
 			inverseAE(el_PUup.theHistogram, plot_el["PU_up"], year)
+			el_PUup.theHistogram=Rebin(el_PUup.theHistogram)
 			inverseAE(el_PUdown.theHistogram, plot_el["PU_down"], year)
+			el_PUdown.theHistogram=Rebin(el_PUdown.theHistogram)
 			inverseAE(datamu, plot_mu["default"], year)
+			datamu=Rebin(datamu)
 			inverseAE(datael, plot_el["default"], year)
-
-	if args.znorm:
-		if args.useall:
-			for i in range(3):
-				znum=znorm(stackmu[i].theHistogram)
-                        	stackmu[i].theHistogram.Scale(1./znum)
-                        	znum=znorm(stackel[i].theHistogram)
-                        	stackel[i].theHistogram.Scale(1./znum)
-                        	znum=znorm(mu_scaleup[i].theHistogram)
-                        	mu_scaleup[i].theHistogram.Scale(1./znum)
-                        	znum=znorm(mu_scaledown[i].theHistogram)
-                        	mu_scaledown[i].theHistogram.Scale(1./znum)
-                        	znum=znorm(mu_ID[i].theHistogram)
-                        	mu_ID[i].theHistogram.Scale(1./znum)
-                        	znum=znorm(mu_reso[i].theHistogram)
-                        	mu_reso[i].theHistogram.Scale(1./znum)
-                        	znum=znorm(el_scaleup[i].theHistogram)
-                        	el_scaleup[i].theHistogram.Scale(1./znum)
-                        	znum=znorm(el_scaledown[i].theHistogram)
-                        	el_scaledown[i].theHistogram.Scale(1./znum)
-                        	znum=znorm(el_PUup[i].theHistogram)
-                        	el_PUup[i].theHistogram.Scale(1./znum)
-                        	znum=znorm(el_PUdown[i].theHistogram)
-                        	el_PUdown[i].theHistogram.Scale(1./znum)
-                        	znum=znorm(datamu[i])
-                        	datamu[i].Scale(1./znum)
-                        	znum=znorm(datael[i])
-                        	datael[i].Scale(1./znum)			
-		else:
-			znum=znorm(stackmu.theHistogram)
-			stackmu.theHistogram.Scale(1./znum)
-			znum=znorm(stackel.theHistogram)
-                        stackel.theHistogram.Scale(1./znum)	
-                	znum=znorm(mu_scaleup.theHistogram)
-                        mu_scaleup.theHistogram.Scale(1./znum)
-			znum=znorm(mu_scaledown.theHistogram)
-                        mu_scaledown.theHistogram.Scale(1./znum)
-			znum=znorm(mu_ID.theHistogram)
-                        mu_ID.theHistogram.Scale(1./znum)
-			znum=znorm(mu_reso.theHistogram)
-                        mu_reso.theHistogram.Scale(1./znum)
-			znum=znorm(el_scaleup.theHistogram)
-                        el_scaleup.theHistogram.Scale(1./znum)
-			znum=znorm(el_scaledown.theHistogram)
-                        el_scaledown.theHistogram.Scale(1./znum)
-			znum=znorm(el_PUup.theHistogram)
-                        el_PUup.theHistogram.Scale(1./znum)
-			znum=znorm(el_PUdown.theHistogram)
-                        el_PUdown.theHistogram.Scale(1./znum)
-			znum=znorm(datamu)
-			datamu.Scale(1./znum)
-			znum=znorm(datael)
-			datael.Scale(1./znum)
+			datael=Rebin(datael)
+	#else:
+		#if args.useall:
+                        #i=0
+                        #for year in range(2016,2019):
+                                #for h in stackmu[i].theStack.GetHists():
+                                #        h=Rebin(h)
+                                #for h in stackel[i].theStack.GetHists():
+                                #        h=Rebin(h)
+                                #stackmu[i].theHistogram=Rebin(stackmu[i].theHistogram)
+                                #stackel[i].theHistogram=Rebin(stackel[i].theHistogram)
+                                #mu_scaleup[i].theHistogram=Rebin(mu_scaleup[i].theHistogram)
+                                #mu_scaledown[i].theHistogram=Rebin(mu_scaledown[i].theHistogram)
+                                #mu_ID[i].theHistogram=Rebin(mu_ID[i].theHistogram)
+                                #mu_reso[i].theHistogram=Rebin(mu_reso[i].theHistogram)
+                                #el_scaleup[i].theHistogram=Rebin(el_scaleup[i].theHistogram)
+                                #el_scaledown[i].theHistogram=Rebin(el_scaledown[i].theHistogram)
+                                #el_PUup[i].theHistogram=Rebin(el_PUup[i].theHistogram)
+                                #el_PUdown[i].theHistogram=Rebin(el_PUdown[i].theHistogram)
+                                #datamu[i]=Rebin(datamu[i])
+                                #datael[i]=Rebin(datael[i])
+                                #i+=1
+                #else:
+                        #if args.use2016: year = 2016
+                        #elif args.use2018: year = 2018
+                        #else: year =2017
+                        #for h in stackmu.theStack.GetHists():
+                        #        h=Rebin(h)
+                        #for h in stackel.theStack.GetHists():
+                        #        h=Rebin(h)
+                        #stackmu.theHistogram=Rebin(stackmu.theHistogram)
+                        #stackel.theHistogram=Rebin(stackel.theHistogram)
+                        #mu_scaleup.theHistogram=Rebin(mu_scaleup.theHistogram)
+                        #mu_scaledown.theHistogram=Rebin(mu_scaledown.theHistogram)
+                        #mu_ID.theHistogram=Rebin(mu_ID.theHistogram)
+                        #mu_reso.theHistogram=Rebin(mu_reso.theHistogram)
+                        #el_scaleup.theHistogram=Rebin(el_scaleup.theHistogram)
+                        #el_scaledown.theHistogram=Rebin(el_scaledown.theHistogram)
+                        #el_PUup.theHistogram=Rebin(el_PUup.theHistogram)
+                        #el_PUdown.theHistogram=Rebin(el_PUdown.theHistogram)
+                        #datamu=Rebin(datamu)
+                        #datael=Rebin(datael)
+	#if args.znorm:
+	#	if args.useall:
+	#		for i in range(3):
+	#			znum=znorm(stackmu[i].theHistogram)
+         #               	stackmu[i].theHistogram.Scale(1./znum)
+        #                	znum=znorm(stackel[i].theHistogram)
+         #               	stackel[i].theHistogram.Scale(1./znum)
+          #              	znum=znorm(mu_scaleup[i].theHistogram)
+         #               	mu_scaleup[i].theHistogram.Scale(1./znum)
+         #               	znum=znorm(mu_scaledown[i].theHistogram)
+         #               	mu_scaledown[i].theHistogram.Scale(1./znum)
+         #               	znum=znorm(mu_ID[i].theHistogram)
+         #               	mu_ID[i].theHistogram.Scale(1./znum)
+         #               	znum=znorm(mu_reso[i].theHistogram)
+         #               	mu_reso[i].theHistogram.Scale(1./znum)
+         #               	znum=znorm(el_scaleup[i].theHistogram)
+         #               	el_scaleup[i].theHistogram.Scale(1./znum)
+         #               	znum=znorm(el_scaledown[i].theHistogram)
+         #               	el_scaledown[i].theHistogram.Scale(1./znum)
+         #               	znum=znorm(el_PUup[i].theHistogram)
+         #               	el_PUup[i].theHistogram.Scale(1./znum)
+         #               	znum=znorm(el_PUdown[i].theHistogram)
+         #               	el_PUdown[i].theHistogram.Scale(1./znum)
+         #               	znum=znorm(datamu[i])
+         #               	datamu[i].Scale(1./znum)
+         #               	znum=znorm(datael[i])
+         #               	datael[i].Scale(1./znum)			
+	#	else:
+	#		znum=znorm(stackmu.theHistogram)
+	#		stackmu.theHistogram.Scale(1./znum)
+	#		znum=znorm(stackel.theHistogram)
+         #               stackel.theHistogram.Scale(1./znum)	
+         #       	znum=znorm(mu_scaleup.theHistogram)
+          #              mu_scaleup.theHistogram.Scale(1./znum)
+	#		znum=znorm(mu_scaledown.theHistogram)
+         #               mu_scaledown.theHistogram.Scale(1./znum)
+	#		znum=znorm(mu_ID.theHistogram)
+        #                mu_ID.theHistogram.Scale(1./znum)
+	#		znum=znorm(mu_reso.theHistogram)
+        #                mu_reso.theHistogram.Scale(1./znum)
+	#		znum=znorm(el_scaleup.theHistogram)
+        #                el_scaleup.theHistogram.Scale(1./znum)
+	#		znum=znorm(el_scaledown.theHistogram)
+        #                el_scaledown.theHistogram.Scale(1./znum)
+	#		znum=znorm(el_PUup.theHistogram)
+        #                el_PUup.theHistogram.Scale(1./znum)
+	#		znum=znorm(el_PUdown.theHistogram)
+        #                el_PUdown.theHistogram.Scale(1./znum)
+	#		znum=znorm(datamu)
+	#		datamu.Scale(1./znum)
+	#		znum=znorm(datael)
+	#		datael.Scale(1./znum)
 	if args.useall:
 		i=0
 		Errs_mu=[]
@@ -617,9 +853,21 @@ def plotDataMC(args,plot_mu,plot_el, category):
 			i+=1
 		if category=="bb":
 			errmu=Errs_mu[0]["massScale"]**2+(Errs_mu[1]["massScale"]+Errs_mu[2]["massScale"])**2+Errs_mu[0]["resolution"]**2+Errs_mu[1]["resolution"]**2+Errs_mu[2]["resolution"]**2+Errs_mu[0]["ID"]**2+(Errs_mu[1]["ID"]+Errs_mu[2]["ID"])**2
+			ErrMu={}
+			ErrMu["massScale"]=Errs_mu[0]["massScale"]**2+(Errs_mu[1]["massScale"]+Errs_mu[2]["massScale"])**2
+			ErrMu["resolution"]=Errs_mu[0]["resolution"]**2+Errs_mu[1]["resolution"]**2+Errs_mu[2]["resolution"]**2
+			ErrMu["ID"]=Errs_mu[0]["ID"]**2+(Errs_mu[1]["ID"]+Errs_mu[2]["ID"])**2
+			
 		else:
 			errmu=Errs_mu[0]["massScale"]**2+(Errs_mu[1]["massScale"]+Errs_mu[2]["massScale"])**2+Errs_mu[0]["resolution"]**2+Errs_mu[1]["resolution"]**2+Errs_mu[2]["resolution"]**2+Errs_mu[0]["ID"]**2+Errs_mu[1]["ID"]**2+Errs_mu[2]["ID"]**2
+			ErrMu={}
+			ErrMu["massScale"]=Errs_mu[0]["massScale"]**2+(Errs_mu[1]["massScale"]+Errs_mu[2]["massScale"])**2
+			ErrMu["resolution"]=Errs_mu[0]["resolution"]**2+Errs_mu[1]["resolution"]**2+Errs_mu[2]["resolution"]**2
+			ErrMu["ID"]=Errs_mu[0]["ID"]**2+Errs_mu[1]["ID"]**2+Errs_mu[2]["ID"]**2
 		errel=Errs_el[0]["massScale"]**2+Errs_el[0]["pileUp"]**2+Errs_el[1]["massScale"]**2+Errs_el[1]["pileUp"]**2+Errs_el[2]["massScale"]**2+Errs_el[2]["pileUp"]**2
+		ErrEl={}
+		ErrEl["massScale"]=Errs_el[0]["massScale"]**2+Errs_el[1]["massScale"]**2+Errs_el[2]["massScale"]**2
+		ErrEl["pileUp"]=Errs_el[0]["pileUp"]**2+Errs_el[1]["pileUp"]**2+Errs_el[2]["pileUp"]**2			
 		scale_el=Errs_el[0]["massScale"]**2+Errs_el[1]["massScale"]**2+Errs_el[2]["massScale"]**2
 		scale_mu=Errs_mu[0]["massScale"]**2+(Errs_mu[1]["massScale"]+Errs_mu[2]["massScale"])**2         
 		stackmu=Addstack(stackmu)
@@ -677,7 +925,7 @@ def plotDataMC(args,plot_mu,plot_el, category):
 
 
 	xMin = 200
-	xMax = 2000
+	xMax = 3490
 	yMin = 1e-3
 	yMax = 1e4
 
@@ -685,7 +933,7 @@ def plotDataMC(args,plot_mu,plot_el, category):
 		yMin = 0.00001 / 40
 		yMax = 200000000.0 / 40
 		xMin = 200
-		xMax = 2000
+		xMax = 3490
 		yMin *= 10000
 		yMax /= 10
 	if args.ae:
@@ -703,24 +951,55 @@ def plotDataMC(args,plot_mu,plot_el, category):
 	# Draw background from stack
 	drawStack_mu.theHistogram.SetLineColor(ROOT.kBlue-3)
 	drawStack_el.theHistogram.SetLineColor(ROOT.kRed-3)
-	drawStack_mu.theHistogram.Draw("same hist")
-	for i in range(1, drawStack_mu.theHistogram.GetSize()-1):
-		print(drawStack_mu.theHistogram.GetBinContent(i))
-		print(drawStack_el.theHistogram.GetBinContent(i))
-	drawStack_el.theHistogram.Draw("same hist")
+	drawStack_mu.theHistogram.SetMarkerStyle(6)
+        drawStack_el.theHistogram.SetMarkerStyle(6)
+	drawStack_mu.theHistogram.SetFillStyle(0)
+        drawStack_el.theHistogram.SetFillStyle(0)
+	#for i in range(1, drawStack_mu.theHistogram.GetSize()-1):
+	#	val=drawStack_mu.theHistogram.GetBinContent(i)
+	#	drawStack_mu.theHistogram.SetBinError(i,math.sqrt(errmu[i-1]+drawStack_mu.theHistogram.GetBinError(i)**2))
+	#	drawStack_mu.theHistogram.SetBinContent(i,val)
+	#	val=drawStack_el.theHistogram.GetBinContent(i)
+	#	drawStack_el.theHistogram.SetBinError(i,math.sqrt(errel[i-1]+drawStack_el.theHistogram.GetBinError(i)**2))
+	#	drawStack_el.theHistogram.SetBinContent(i,val)
+	#	val=datamu.GetBinContent(i)
+	#	datamu.SetBinError(i,math.sqrt(scale_mu[i-1]+datamu.GetBinError(i)**2))
+	#	datamu.SetBinContent(i,val)
+	#	val=datael.GetBinContent(i)
+	#	datael.SetBinError(i,math.sqrt(scale_el[i-1]+datael.GetBinError(i)**2))
+	#	datael.SetBinContent(i,val)
+	#drawStack_mu.theHistogram.SetLineWidth(2)
+	#drawStack_el.theHistogram.SetLineWidth(2)
+	drawStack_mu.theHistogram.Draw("same histe ")
+	#for i in range(1, drawStack_mu.theHistogram.GetSize()-1):
+		#print(drawStack_mu.theHistogram.GetBinContent(i))
+		#print(drawStack_el.theHistogram.GetBinContent(i))
+	drawStack_el.theHistogram.Draw("same histe ")
+	drawStack_mu.theHistogram.SetLineColor(ROOT.kBlue)
+        drawStack_el.theHistogram.SetLineColor(ROOT.kRed)
+        drawStack_mu.theHistogram.SetFillStyle(0)
+        drawStack_el.theHistogram.SetFillStyle(0)
 
 
 	# Draw data
 	datamu.SetMinimum(0.0001)
+	Box = ROOT.TBox(0.39,0.79,0.5,0.9)
+        Box.SetLineColor(ROOT.kRed)
+        Box.SetFillStyle(0)
+        #Box.SetFillAlphaColor(0,0)
+        Box.SetLineWidth(2)
 	if args.data:
 		datamu.SetMarkerColor(ROOT.kViolet)
 		datael.SetMarkerColor(ROOT.kOrange)
-		for i in range(1, datamu.GetSize()-1):
-                	print(datamu.GetBinContent(i))
-                	print(datael.GetBinContent(i))
-		datamu.Draw("samep")	
-		datael.Draw("samep")
-
+		#for i in range(1, datamu.GetSize()-1):
+                	#print(datamu.GetBinContent(i))
+                	#print(datael.GetBinContent(i))
+		datamu.Draw("ESAMEp")	
+		datael.Draw("ESAMEp")
+		Box.Draw("same")
+		#a1=datael.Integral(60,120)
+		#a2=drawStack_el.theHistogram.Integral(60,120)
+		#print(a1/a2)
 	# Draw legend
 	if "Eta" in plot_mu["default"].fileName or "CosTheta" in plot_mu["default"].fileName:
 		legendEta.Draw()
@@ -729,17 +1008,38 @@ def plotDataMC(args,plot_mu,plot_el, category):
 
 	plotPad.SetLogx(plot_mu["default"].logX)
 	if args.useall:
-		latex.DrawLatex(0.95, 0.96, "three years data")
+		latex.DrawLatex(0.95, 0.96, "%.1f fb^{-1} (13 TeV, #mu#mu), %.1f fb^{-1} (13 TeV, ee)"%((lumi_mu[0]+lumi_mu[1]+lumi_mu[2])*0.001, (lumi_el[0]+lumi_el[1]+lumi_el[2])*0.001))
 	else:	
 		latex.DrawLatex(0.95, 0.96, "%.1f fb^{-1} (13 TeV, #mu#mu), %.1f fb^{-1} (13 TeV, ee)"%(lumi_mu*0.001, lumi_el*0.001))
 	yLabelPos = 0.85
-	cmsExtra = "Private Work"
-	if not args.data:
-		cmsExtra = "#splitline{Private Work}{Simulation}"
-		yLabelPos = 0.82	
+	cmsExtra = "Preliminary"
+	#if not args.data:
+		#cmsExtra = "#splitline{Private Work}{Simulation}"
+		#yLabelPos = 0.82
+	if category=="bb":
+		if args.useall:
+			dataLabel = "Full Run 2   BB"
+		elif args.use2016:
+			dataLabel = "2016   BB"	
+		elif args.use2018:
+			dataLabel = "2018   BB"
+		else:
+			dataLabel = "2017   BB"
+	else:
+                if args.useall:
+                        dataLabel = "Full Run 2   BE"
+                elif args.use2016:
+                        dataLabel = "2016   BE"      
+                elif args.use2018:
+                        dataLabel = "2018   BE"
+                else:
+                        dataLabel = "2017   BE"	
+	pave=ROOT.TPaveText(0.39,0.79,0.5,0.9)
+	pave.AddBox(0.39,0.79,0.5,0.9)
+	pave.Draw()
 	latexCMS.DrawLatex(0.19,0.89,"CMS")
 	latexCMSExtra.DrawLatex(0.19,yLabelPos,"%s"%(cmsExtra))
-	
+	latexCMSExtra.DrawLatex(0.39,0.79,"%s"%(dataLabel))	
 	if args.ratio:
 		ratioPad.cd()
 		ratioPad.SetLogx(plot_mu["default"].logX)
@@ -758,18 +1058,39 @@ def plotDataMC(args,plot_mu,plot_el, category):
 		chann = True if "BB" in plot_mu["default"].fileName else False
 		#print(errel)
 		#print(errmu)
+		#print(hhmu.GetSize())
 		for i in range(1, hhmu.GetSize()-1):
 			xval = hhmu.GetBinCenter(i)
 			xerr = hhmu.GetBinWidth(i)/2
 			if hhel.GetBinContent(i) == 0: continue
 			if hhmu.GetBinContent(i) == 0: continue
-			print(hhmu.GetBinContent(i))
-			print(hhel.GetBinContent(i))
+			muScale=math.sqrt(ErrMu["massScale"][i-1])/hhmu.GetBinContent(i)
+			muReso=math.sqrt(ErrMu["resolution"][i-1])/hhmu.GetBinContent(i)
+			muID=math.sqrt(ErrMu["ID"][i-1])/hhmu.GetBinContent(i)
+			muStat=hhmu.GetBinError(i)/hhmu.GetBinContent(i)
+			elScale=math.sqrt(ErrEl["massScale"][i-1])/hhel.GetBinContent(i)
+			elPile=math.sqrt(ErrEl["pileUp"][i-1])/hhel.GetBinContent(i)
+			elStat=hhel.GetBinError(i)/hhel.GetBinContent(i)
+			print "mass scale %f, resolution %f, ID %f, stat %f, mass %f, dimuon channel" %(muScale, muReso, muID, muStat, xval)
+			print "mass scale %f, pile up %f, stat %f, mass %f, dielectron channel" %(elScale, elPile, elStat, xval)
+			#print(hhmu.GetBinContent(i))
+			#print(hhel.GetBinContent(i))
 			yval = hhmu.GetBinContent(i)*1.0/hhel.GetBinContent(i)
-			yerr = yval*math.sqrt((errel[i-1]**0.5/hhel.GetBinContent(i))**2+(errmu[i-1]**0.5/hhmu.GetBinContent(i))**2+(hhmu.GetBinError(i)/hhmu.GetBinContent(i))**2+(hhel.GetBinError(i)/hhel.GetBinContent(i))**2)
+			hhmu.SetBinError(i,math.sqrt(errmu[i-1]+hhmu.GetBinError(i)**2))
+			hhel.SetBinError(i,math.sqrt(errel[i-1]+hhel.GetBinError(i)**2))
+			
+			yerr = yval*math.sqrt((hhmu.GetBinError(i)/hhmu.GetBinContent(i))**2+(hhel.GetBinError(i)/hhel.GetBinContent(i))**2)
 			ratioGraphs.SetPoint(i, xval, yval)
-			ratioGraphs.SetPointError(i, xerr, xerr, yerr, yerr)
-			print ("M = %f, r+-e = %f +- %f"%(xval, yval, yerr/yval))
+                        ratioGraphs.SetPointError(i, xerr, xerr, yerr, yerr)
+		if args.alter:
+			#h_fit=deepcopy(hhmu)
+			#hhmu.Sumw2()
+			#hhel.Sumw2()
+			#h_fit.Divide(hhmu,hhel)	
+			#func1=ROOT.TF1("func1","[0]*log(x)+[1]",200,3500)
+			#ratioGraphs.Fit(func1,"","",200,3500)
+			#print(func1.GetChisquare()/func1.GetNDF())
+			print("M = %f, r+-e = %f +- %f"%(xval, yval, yerr/yval))
 		ratioData = ROOT.TGraphAsymmErrors(datamu.GetSize()-2)
 		for i in range(1, datamu.GetSize()-1):
 			xval = datamu.GetBinCenter(i)
@@ -780,15 +1101,17 @@ def plotDataMC(args,plot_mu,plot_el, category):
 			#print(datael.GetBinError(i))
 			yval = datamu.GetBinContent(i)*1.0/datael.GetBinContent(i)
 			yerr = yval*math.sqrt((datamu.GetBinError(i)/datamu.GetBinContent(i))**2+(datael.GetBinError(i)/datael.GetBinContent(i))**2+scale_mu[i-1]/(datamu.GetBinContent(i)**2)+scale_el[i-1]/(datael.GetBinContent(i)**2))
+			print(yval)
+			print(yerr)
 			ratioData.SetPoint(i, xval, yval)
 			ratioData.SetPointError(i, xerr, xerr, yerr, yerr)
-			print ("M = %f, r+-e = %f +- %f"%(xval, yval, yerr/yval))
+			print("M = %f, r+-e = %f +- %f"%(xval, yval, yerr/yval))
 		nBinsX = 20
 		nBinsY = 10
 		if args.ae: 
 			hAxis = ROOT.TH2F("hAxis", "", nBinsX, xMin, xMax, nBinsY, 0.5, 2.5)
 		else:	
-			hAxis = ROOT.TH2F("hAxis", "", nBinsX, xMin, xMax, nBinsY, 0.5, 5)
+			hAxis = ROOT.TH2F("hAxis", "", nBinsX, xMin, xMax, nBinsY, 0.5, 2.5)
 		hAxis.Draw("AXIS")
 
 		hAxis.GetYaxis().SetNdivisions(408)
@@ -811,15 +1134,19 @@ def plotDataMC(args,plot_mu,plot_el, category):
 		ratioGraphs.GetXaxis().SetLabelSize(0.0)
 		ratioGraphs.SetFillStyle(3002)	
 		ratioGraphs.Draw("same p")
+		#func.Draw("same")
 		ratioData.SetMarkerColor(ROOT.kViolet)
 		ratioData.Draw("same p")
-		
+		if args.alter:
+			Expression="f(x)=p_{0}+p_{1}lnx+p_{2}x^{2}"
+			latexCMSExtra.DrawLatex(0.59,yLabelPos,"%s"%(Expression))
+			func.Draw("same")
 		rlegend = TLegend(0.2, 0.65, 0.5, 0.925)
 		rlegend.SetFillStyle(0)
 		rlegend.SetBorderSize(1)
 		rlegend.SetTextFont(42)
-		rlegend.AddEntry(ratioGraphs, "e/mu in MC inclusive", "pe")
-		rlegend.AddEntry(ratioData, "e/mu in data", "pe")
+		rlegend.AddEntry(ratioGraphs, "mumu/ee in MC inclusive", "pe")
+		rlegend.AddEntry(ratioData, "mumu/ee in data", "pe")
 		rlegend.Draw("same")
 		
 		ratioPad.Update()
@@ -838,7 +1165,7 @@ def plotDataMC(args,plot_mu,plot_el, category):
 	else: year = "2017"
 
 	if args.ae: year += "_inverseAE"
-	if args.znorm: year += "_znorm"
+	#if args.znorm: year += "_znorm"
 	
 	hCanvas.Print("lepFlavor/%s_%s_datamc.pdf"%(plot_mu["default"].fileName, year))
 	if args.datadiviMC:
@@ -851,16 +1178,49 @@ def plotDataMC(args,plot_mu,plot_el, category):
 			if datael.GetBinContent(i) == 0: continue
 			if datamu.GetBinContent(i) == 0: continue
 			dataval = datamu.GetBinContent(i)*1.0/datael.GetBinContent(i)
-			dataerr = math.sqrt((datamu.GetBinError(i)/datamu.GetBinContent(i))**2+(datael.GetBinError(i)/datael.GetBinContent(i)))
+			dataerr = math.sqrt((datamu.GetBinError(i)/datamu.GetBinContent(i))**2+(datael.GetBinError(i)/datael.GetBinContent(i))**2+scale_mu[i-1]/(datamu.GetBinContent(i)**2)+scale_el[i-1]/(datael.GetBinContent(i)**2))
 			if hhel.GetBinContent(i) == 0: continue
 			if hhmu.GetBinContent(i) == 0: continue
 			MCval = hhmu.GetBinContent(i)*1.0/hhel.GetBinContent(i)
 			MCerr = math.sqrt((errel[i-1]**0.5/hhel.GetBinContent(i))**2+(errmu[i-1]**0.5/hhmu.GetBinContent(i))**2+(hhmu.GetBinError(i)/hhmu.GetBinContent(i))**2+(hhel.GetBinError(i)/hhel.GetBinContent(i))**2)
 			yval = dataval/MCval
 			yerr=yval*math.sqrt((MCerr)**2+(dataerr)**2)
-			ratioDataMC.SetPoint(i, xval, yval)
 			ratioDataMC.SetPointError(i, xerr, xerr, yerr, yerr)
-			print ("M = %f, r+-e = %f +- %f"%(xval, yval, abs(yval-1)/yerr))
+                        print ("M = %f, r+-e = %f +- %f"%(xval, yval, yerr))
+	if args.alter:
+		ers=0
+                dmCanvas = TCanvas("hCanvas", "Distribution", 800,800)
+                ratioDataMC = ROOT.TGraphAsymmErrors(datamu.GetSize()-2)
+		for i in range(1, datamu.GetSize()-1):
+			xval=datamu.GetBinCenter(i)
+			fval=func.Eval(xval)
+			print "At the bin center with the mass %f, scaling function value is %f, dimuon event yield is %f, dielectron event yield is %f"%(datamu.GetBinCenter(i), fval, datamu.GetBinContent(i)*datamu.GetBinWidth(i), datael.GetBinContent(i)*datael.GetBinWidth(i))
+			muval=datamu.GetBinContent(i)/func.Eval(xval)
+			ParErr0=func.GetParError(0)
+			ParErr1=func.GetParError(1)
+			ParErr2=func.GetParError(2)
+			fErr=math.sqrt(ParErr0**2+(ParErr1*math.log(xval))**2+(ParErr2*xval**2)**2)
+			#fErr=0
+			#err=math.sqrt(datamu.GetBinError(i)**2+scale_mu[i-1]+muval**2*fErr**2)/fval
+			err=muval*fErr/fval
+			datamu.SetBinContent(i,muval)
+			datamu.SetBinError(i,err)
+			#elerr=math.sqrt(datael.GetBinError(i)**2+scale_el[i-1])
+			#datael.SetBinError(i,elerr)
+		datamu.Sumw2()
+		datamu=Rebin(datamu)
+		datael.Sumw2()
+		datael=Rebin(datael)
+		for i in range(1, datamu.GetSize()-1):
+			xval=datamu.GetBinCenter(i)
+			xerr=datamu.GetBinWidth(i)
+			if datael.GetBinContent(i) == 0: continue
+                        if datamu.GetBinContent(i) == 0: continue
+			yval=datamu.GetBinContent(i)/datael.GetBinContent(i)
+			yerr=yval*math.sqrt((datamu.GetBinError(i)/datamu.GetBinContent(i))**2+(datael.GetBinError(i)/datael.GetBinContent(i))**2)
+			ratioDataMC.SetPoint(i, xval, yval)
+			ratioDataMC.SetPointError(i, xerr/2, xerr/2, yerr, yerr)
+			print ("M = %f, r+-e = %f +- %f"%(xval, yval, yerr))
 			
 
 		#print("max err")
@@ -869,6 +1229,7 @@ def plotDataMC(args,plot_mu,plot_el, category):
 		dmPad.SetLogx(True)
                 #setTDRStyle()
                 #dmPad.UseCurrentStyle()
+		Box.Draw("same")
                 dmPad.Draw()
                 dmPad.cd()
 		dmAxis = ROOT.TH2F("dmAxis", "", nBinsX, xMin, xMax, nBinsY, 0.5, 2.5)
@@ -878,7 +1239,10 @@ def plotDataMC(args,plot_mu,plot_el, category):
 		dmAxis.SetTitleOffset(1.2, "X")
                 dmAxis.SetTitleSize(0.06, "Y")
                 dmAxis.SetTitleSize(0.04, "X")
-                dmAxis.SetYTitle("Data/MC")
+		if args.datadiviMC:
+                	dmAxis.SetYTitle("R^{data}_{#mu#mu/ee}/R^{mc}_{#mu#mu/ee}")
+		else:
+                        dmAxis.SetYTitle("R^{data}_{#mu#mu/ee}")
                 dmAxis.SetXTitle("m(l^{+}l^{-}) [GeV]")
                 dmAxis.GetXaxis().SetLabelSize(0.048)
                 dmAxis.GetYaxis().SetLabelSize(0.048)
@@ -896,6 +1260,14 @@ def plotDataMC(args,plot_mu,plot_el, category):
                 ratioDataMC.Draw("SAME p")
 		dmPad.Update()
 		dmPad.RedrawAxis()
+		latexCMS.DrawLatex(0.19,0.89,"CMS")
+		latexCMSExtra.DrawLatex(0.19,yLabelPos,"%s"%(cmsExtra))
+		latexCMSExtra.DrawLatex(0.59,yLabelPos,"%s"%(dataLabel))
+		
+		if args.useall:
+                	latex.DrawLatex(0.95, 0.96, "%.1f fb^{-1} (13 TeV, #mu#mu), %.1f fb^{-1} (13 TeV, ee)"%((lumi_mu[0]+lumi_mu[1]+lumi_mu[2])*0.001, (lumi_el[0]+lumi_el[1]+lumi_el[2])*0.001))
+        	else:
+                	latex.DrawLatex(0.95, 0.96, "%.1f fb^{-1} (13 TeV, #mu#mu), %.1f fb^{-1} (13 TeV, ee)"%(lumi_mu*0.001, lumi_el*0.001))
 		dmCanvas.Print("lepFlavor/%s_%s_datadivimc.pdf"%(plot_mu["default"].fileName, year))
 					
 if __name__ == "__main__":
@@ -922,13 +1294,13 @@ if __name__ == "__main__":
 	parser.add_argument("-b", "--backgrounds", dest="backgrounds", action="append", default=[],
 						  help="backgrounds to plot.")
 	parser.add_argument("--ae", action="store_true", dest="ae", default=False,help="times inverse Acceptance x Efficiency")
-	parser.add_argument("--znorm", action="store_true", dest="znorm", default=False, help="normalize to z peak")
+	parser.add_argument("--alter", action="store_true", dest="alter", default=False, help="Another approach")
 	parser.add_argument("--all", action="store_true", dest="useall", default=False, help="add the data from 2016 to 2018")
 	parser.add_argument("-c", action="store_true", dest="datadiviMC", default=False, help="get data/MC")
 	args = parser.parse_args()
 	if len(args.backgrounds) == 0:
-		args.backgrounds = ["Wjets","Other","DrellYan"]
-
+		#args.backgrounds = ["Wjets","Other","DrellYan"]
+		args.backgrounds = ["DrellYan","Other"]
 		
 	muplots_bb={"default":"massPlotBB","scale_up":"massPlotBBScaleUpNoLog","scale_down":"massPlotBBScaleDownNoLog","reso":"massPlotBBSmearNoLog","ID":"massPlotBBMuonIDNoLog"}
 	muplots_be={"default":"massPlotBE","scale_up":"massPlotBEScaleUpNoLog","scale_down":"massPlotBEScaleDownNoLog","reso":"massPlotBESmearNoLog","ID":"massPlotBEMuonIDNoLog"}
