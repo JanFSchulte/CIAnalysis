@@ -39,35 +39,35 @@ def negWeightFractions(path,muon=True):
 
 
 def binning(channel='muon'):
-	#if channel == 'muon':
-		
-		#return [60., 65.43046396, 71.3524269, 77.81037328, 84.85281374, 92.53264952,  100.90756983,  110.04048518,  120., 129.95474058, 140.73528833, 152.41014904, 165.0535115, 178.74571891, 193.57377942, 209.63191906,  227.02218049,  245.85507143,  266.2502669,   288.3373697, 
+	if channel == 'muon' or 'electron':
+		#return [60,120,400,600,900,1300,1800,6000]
+		return [50, 120,150,200,300,400,500,690,900,1250,1610, 2000, 3000,4000, 6070]# 152.41014904, 165.0535115, 178.74571891, 193.57377942, 209.63191906,  227.02218049,  245.85507143,  266.2502669,   288.3373697, 
 		#312.25673399,  338.16035716,  366.21284574,  396.59246138,  429.49225362, 465.12128666,  503.70596789,  545.49148654,  590.74337185,  639.74918031, 692.82032303,  750.29404456,  812.53556599,  879.94040575,  952.93689296, 
 		#1031.98888927, 1117.59873655, 1210.310449,   1310.71317017, 1419.4449167,
 		#1537.19663264, 1664.71658012, 1802.81509423, 1952.36973236, 2114.3308507, 2289.72764334, 2479.6746824,  2685.37900061, 2908.14776151, 3149.39656595, 3410.65844758, 3693.59361467, 4000.        ]
 	#if channel == 'electron':
-		# ~ return ([j for j in range(50, 120, 5)] +
-				# ~ [j for j in range(120, 150, 5)] +
-				# ~ [j for j in range(150, 200, 10)] +
-				# ~ [j for j in range(200, 600, 20)]+
-				# ~ [j for j in range(600, 900, 30) ]+
-				# ~ [j for j in range(900, 1250, 50)] +
-				# ~ [j for j in range(1250, 1600, 60) ] +
-				# ~ [j for j in range(1600, 1900, 70) ] +
-				# ~ [j for j in range(1900, 4000, 80) ] +
-				# ~ [j for j in range(4000, 5000, 100) ] +
-				# ~ [5000])
-		return ([j for j in range(50, 120, 5)] +
-				[j for j in range(120, 150, 5)] +
-				[j for j in range(150, 200, 10)] +
-				[j for j in range(200, 600, 20)]+
-				[j for j in range(600, 900, 30) ]+
-				[j for j in range(900, 1250, 50)] +
-				[j for j in range(1250, 1610, 60) ] +
-				[j for j in range(1610, 1890, 70) ] +
-				[j for j in range(1890, 3970, 80) ] +
-				[j for j in range(3970, 6070, 100) ] +
-				[6070])
+		# return ([j for j in range(50, 120, 5)] +
+		#		 [j for j in range(120, 150, 5)] +
+		#		 [j for j in range(150, 200, 10)] +
+		#		 [j for j in range(200, 600, 20)]+
+		#		 [j for j in range(600, 900, 30) ]+
+		#		 [j for j in range(900, 1250, 50)] +
+		#		 [j for j in range(1250, 1600, 60) ] +
+		#		 [j for j in range(1600, 1900, 70) ] +
+		#		 [j for j in range(1900, 4000, 80) ] +
+		#		 [j for j in range(4000, 5000, 100) ] +
+		#		 [5000])
+		#return ([j for j in range(50, 120, 5)] +
+		#		[j for j in range(120, 150, 5)] +
+		#		[j for j in range(150, 200, 10)] +
+		#		[j for j in range(200, 600, 20)]+
+		#		[j for j in range(600, 900, 30) ]+
+		#		[j for j in range(900, 1250, 50)] +
+		#		[j for j in range(1250, 1610, 60) ] +
+		#		[j for j in range(1610, 1890, 70) ] +
+		#		[j for j in range(1890, 3970, 80) ] +
+		#		[j for j in range(3970, 6070, 100) ] +
+		#		[6070])
 	# Calculate logarithmic bins
 	# ~ width = (math.log(m_max) - math.log(m_min)) / nbins
 	# ~ logbins = []	# ~ # Exceed m_max to start with Z' binning, but reach 5 TeV
@@ -75,7 +75,7 @@ def binning(channel='muon'):
 		# ~ logbins.append(int(math.exp(math.log(m_min) + width * i)))
 
 	# ~ return logbins
-	
+	#	return [j for j in range(50,6071,5)] 
 def loadHistoFromFile(fileName,histName,rebin,muon=True,logBins=False):
 	"""
 	returns histogram from file
@@ -128,7 +128,10 @@ def loadHistoFromFile(fileName,histName,rebin,muon=True,logBins=False):
 			bng = binning("electron")
 		else:
 			bng = binning("muon")
-	
+		#for i in range(0,result.GetNbinsX()):
+		#	print(result.GetBinLowEdge(i))
+		#print(histName)
+		#print(len(bng) - 1)	
 		result = result.Rebin(len(bng) - 1, 'hist_' + uuid.uuid4().hex, array('d', bng))
 		
 		for i in range(0,result.GetNbinsX()):
@@ -374,9 +377,7 @@ class TheStack:
 			else:	
 				self.theHistogram.Add(temphist.Clone())
 	def Add(self,addstack):
-		for h in addstack.theStack.GetHists():
-			self.theStack.Add(h.Clone())
-			self.theHistogram.Add(h.Clone())
+		self.theHistogram.Add(addstack.theHistogram.Clone())
 				
 class TheStackRun2:
 	from ROOT import THStack

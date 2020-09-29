@@ -30,6 +30,7 @@ def scale(hist1,hist2):
 	sFac1=hist1.Integral(lowLimit,upLimit)
 	sFac2=hist2.Integral(lowLimit,upLimit)
 	print(sFac2)
+	print sFac1/sFac2
 	return sFac1/sFac2
 def getMuErr(mass, chann, norm=False):
 	lumi = 0.0
@@ -328,6 +329,7 @@ def plotDataMC(args,plot_mu,plot_el, category):
 	eventCounts_mu = totalNumberOfGeneratedEvents(path,plot_mu["default"].muon)	
 	eventCounts_el = totalNumberOfGeneratedEvents(path,plot_el["default"].muon)
 	negWeights_mu = negWeightFractions(path,plot_mu["default"].muon)
+	print negWeights_mu
 	negWeights_el = negWeightFractions(path,plot_el["default"].muon)
 
 	# Background load processes	
@@ -746,7 +748,7 @@ def plotDataMC(args,plot_mu,plot_el, category):
 			datamu=Rebin(datamu)
 			inverseAE(datael, plot_el["default"], year)
 			datael=Rebin(datael)
-	#else:
+	#els:
 		#if args.useall:
                         #i=0
                         #for year in range(2016,2019):
@@ -864,10 +866,10 @@ def plotDataMC(args,plot_mu,plot_el, category):
 			ErrMu["massScale"]=Errs_mu[0]["massScale"]**2+(Errs_mu[1]["massScale"]+Errs_mu[2]["massScale"])**2
 			ErrMu["resolution"]=Errs_mu[0]["resolution"]**2+Errs_mu[1]["resolution"]**2+Errs_mu[2]["resolution"]**2
 			ErrMu["ID"]=Errs_mu[0]["ID"]**2+Errs_mu[1]["ID"]**2+Errs_mu[2]["ID"]**2
-		errel=Errs_el[0]["massScale"]**2+Errs_el[0]["pileUp"]**2+Errs_el[1]["massScale"]**2+Errs_el[1]["pileUp"]**2+Errs_el[2]["massScale"]**2+Errs_el[2]["pileUp"]**2
+		errel=Errs_el[0]["massScale"]**2+(Errs_el[0]["pileUp"]+Errs_el[1]["pileUp"]+Errs_el[2]["pileUp"])**2+Errs_el[1]["massScale"]**2+Errs_el[2]["massScale"]**2
 		ErrEl={}
 		ErrEl["massScale"]=Errs_el[0]["massScale"]**2+Errs_el[1]["massScale"]**2+Errs_el[2]["massScale"]**2
-		ErrEl["pileUp"]=Errs_el[0]["pileUp"]**2+Errs_el[1]["pileUp"]**2+Errs_el[2]["pileUp"]**2			
+		ErrEl["pileUp"]=(Errs_el[0]["pileUp"]+Errs_el[1]["pileUp"]+Errs_el[2]["pileUp"])**2			
 		scale_el=Errs_el[0]["massScale"]**2+Errs_el[1]["massScale"]**2+Errs_el[2]["massScale"]**2
 		scale_mu=Errs_mu[0]["massScale"]**2+(Errs_mu[1]["massScale"]+Errs_mu[2]["massScale"])**2         
 		stackmu=Addstack(stackmu)
@@ -1066,11 +1068,11 @@ def plotDataMC(args,plot_mu,plot_el, category):
 			if hhmu.GetBinContent(i) == 0: continue
 			muScale=math.sqrt(ErrMu["massScale"][i-1])/hhmu.GetBinContent(i)
 			muReso=math.sqrt(ErrMu["resolution"][i-1])/hhmu.GetBinContent(i)
-			muID=math.sqrt(ErrMu["ID"][i-1])/hhmu.GetBinContent(i)
+			muID=math.sqrt(ErrMu["ID"][i-1])/(hhmu.GetBinContent(i))
 			muStat=hhmu.GetBinError(i)/hhmu.GetBinContent(i)
 			elScale=math.sqrt(ErrEl["massScale"][i-1])/hhel.GetBinContent(i)
 			elPile=math.sqrt(ErrEl["pileUp"][i-1])/hhel.GetBinContent(i)
-			elStat=hhel.GetBinError(i)/hhel.GetBinContent(i)
+			elStat=hhel.GetBinError(i)/(hhel.GetBinContent(i))
 			print "mass scale %f, resolution %f, ID %f, stat %f, mass %f, dimuon channel" %(muScale, muReso, muID, muStat, xval)
 			print "mass scale %f, pile up %f, stat %f, mass %f, dielectron channel" %(elScale, elPile, elStat, xval)
 			#print(hhmu.GetBinContent(i))
@@ -1205,8 +1207,8 @@ def plotDataMC(args,plot_mu,plot_el, category):
 			err=muval*fErr/fval
 			datamu.SetBinContent(i,muval)
 			datamu.SetBinError(i,err)
-			#elerr=math.sqrt(datael.GetBinError(i)**2+scale_el[i-1])
-			#datael.SetBinError(i,elerr)
+			elerr=math.sqrt(datael.GetBinError(i)**2+scale_el[i-1])
+			datael.SetBinError(i,elerr)
 		datamu.Sumw2()
 		datamu=Rebin(datamu)
 		datael.Sumw2()
@@ -1299,8 +1301,8 @@ if __name__ == "__main__":
 	parser.add_argument("-c", action="store_true", dest="datadiviMC", default=False, help="get data/MC")
 	args = parser.parse_args()
 	if len(args.backgrounds) == 0:
-		#args.backgrounds = ["Wjets","Other","DrellYan"]
-		args.backgrounds = ["DrellYan","Other"]
+		args.backgrounds = ["Wjets","Other"]
+		#args.backgrounds = ["DrellYan"]
 		
 	muplots_bb={"default":"massPlotBB","scale_up":"massPlotBBScaleUpNoLog","scale_down":"massPlotBBScaleDownNoLog","reso":"massPlotBBSmearNoLog","ID":"massPlotBBMuonIDNoLog"}
 	muplots_be={"default":"massPlotBE","scale_up":"massPlotBEScaleUpNoLog","scale_down":"massPlotBEScaleDownNoLog","reso":"massPlotBESmearNoLog","ID":"massPlotBEMuonIDNoLog"}

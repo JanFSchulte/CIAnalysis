@@ -4,7 +4,8 @@ from ROOT import TMath
 import sys
 import copy
 
-path = "../files/"
+path = "/depot/cms/users/schul105/files/"
+#path="/depot/cms/users/minxi/"
 
 
 
@@ -21,6 +22,7 @@ zScale2016 = {
 	"muons":0.9727
 	# ~ "muons":1.0
 }
+
 
 crossSections = {
 "dyInclusive50":5765.4,
